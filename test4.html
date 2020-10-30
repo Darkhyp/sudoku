@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      height: 400px;
+    }
+
+    textarea {
+      width: 95%;
+      height: inherit;
+    }
+  </style>
+
+  <script>
+    window.onload = function() {
+      var button = document.querySelector("#myfile + button");
+      var input = document.getElementById("myfile");
+      var display = document.getElementById("DisplayText");
+      var text = null;
+
+      function readFullPathToFileOnUserFileSystem(e) {
+        var path = e.target.value;
+        console.log(path);
+        var w = window.open(path, "_blank");
+        var img = new Image;
+        img.crossOrigin = "anonymous";
+        img.onload = function() {
+          document.body.appendChild(this);
+        }
+        img.onerror = function(err) {
+          console.log("img error", err.message)
+        }
+        img.src = path;
+        var request = new XMLHttpRequest();
+        request.open("GET", path.trim(), true);
+        request.onload = function() {
+          console.log(this.responseText)
+        }
+        request.error = function(err) {
+          console.log(err.message)
+        }
+        request.send();
+
+      }
+
+      display.addEventListener("input", readFullPathToFileOnUserFileSystem);
+      input.addEventListener("change", addDoc);
+      input.addEventListener("progress", function(event) {
+        console.log("progress", event)
+      });
+      button.addEventListener("click", handleText)
+
+      function addDoc(event) {
+        var mozResult = [];
+
+        function mozReadDirectories(entries, path) {
+          console.log("dir", entries, path);
+          return [].reduce.call(entries, function(promise, entry) {
+              return promise.then(function() {
+                console.log("entry", entry);
+                return Promise.resolve(entry.getFilesAndDirectories() || entry)
+                  .then(function(dir) {
+                    console.log("dir getFilesAndDirectories", dir)
+                    return dir
+                  })
+              })
+            }, Promise.resolve())
+            .catch(function(err) {
+              console.log(err, err.message)
+            })
+            .then(function(items) {
+              console.log("items", items);
+              var dir = items.filter(function(folder) {
+                return folder instanceof Directory
+              });
+              var files = items.filter(function(file) {
+                return file instanceof File
+              });
+              if (files.length) {
+                console.log("files:", files, path);
+                mozResult = mozResult.concat.apply(mozResult, files);
+
+              }
+              if (dir.length) {
+                console.log(dir, dir[0] instanceof Directory, dir[0]);
+                return mozReadDirectories(dir, dir[0].path || path);
+
+              } else {
+                if (!dir.length) {
+
+                  return Promise.resolve(mozResult).then(function(complete) {
+                    return complete
+                  })
+
+                }
+              }
+
+            })
+            .catch(function(err) {
+              console.log(err)
+            })
+
+        };
+
+        console.log("files", event.target.files);
+        if ("getFilesAndDirectories" in event.target) {
+          return (event.type === "drop" ? event.dataTransfer : event.target)
+          .getFilesAndDirectories()
+            .then(function(dir) {
+              if (dir[0] instanceof Directory) {
+                console.log(dir)
+                return mozReadDirectories(dir, dir[0].path || path)
+                  .then(function(complete) {
+                    console.log("complete:", complete);
+                    event.target.value = null;
+                  });
+              } else {
+                if (dir[0] instanceof File && dir[0].size > 0) {
+                  return Promise.resolve(dir)
+                    .then(function(complete) {
+                      console.log("complete:", complete);
+                    })
+                } else {
+                  if (dir[0].size == 0) {
+                    throw new Error("could not process '" + dir[0].name + "' directory" + " at drop event at firefox, upload folders at 'Choose folder...' input");
+                  }
+                }
+              }
+            }).catch(function(err) {
+              console.log(err)
+            })
+        }
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          text = reader.result;
+          console.log("FileReader.result", text);
+          button.removeAttribute("disabled");
+        }
+
+        reader.onerror = function(err) {
+          console.log(err, err.loaded, err.loaded === 0, file);
+          button.removeAttribute("disabled");
+        }
+
+        reader.onprogress = function(e) {
+          console.log(e, e.lengthComputable, e.loaded, e.total);
+        }
+
+        reader.readAsArrayBuffer(file);
+
+      }
+
+      function handleText() {
+
+        // do stuff with `text`: `reader.result` from `addDoc`
+        display.textContent = text;
+        button.setAttribute("disabled", "disabled");
+        // set `text` to `null` if not needed or referenced again
+        text = null;
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <input type="file" id="myfile" webkitdirectory directory allowdirs>
+  <button type="button" disabled>Add Document</button>
+  <br>
+  <br>
+  <textarea id="DisplayText"></textarea>
+</body>
+
+</html>

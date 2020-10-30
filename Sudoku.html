@@ -1,0 +1,511 @@
+<!- author Alexander KOROVIN v1 [2017]</a>
+<html>
+	<head>
+		<title>Sudoku</title>
+
+<!-		<a href="" id="a tmp" style="display: none;">
+<!- click here to download your file</a>
+		
+		<!- for filename saveas (hidden)-> 
+		<!- <input type="text" class="form-control" id="get-fileName" value="save" placeholder="Enter file name" style="display: none;">
+		
+		<!- for filename load (hidden) ->
+		<input type="file" id="file-input" style="display: none;"/>
+
+		<script>
+			function doDate()
+			{
+				var str = "";
+
+				var days = new Array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
+				var months = new Array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
+
+				var currentDate = new Date();
+				var dTime = (currentDate - startDate)/1000;
+
+				str += "Today is: " + days[currentDate.getDay()] + ", " + currentDate.getDate() + " " + months[currentDate.getMonth()] + " " + currentDate.getFullYear() + " " + currentDate.getHours() +":" + currentDate.getMinutes() + ":" + currentDate.getSeconds();
+				if (!isManual)
+					str += "\nElapsed time: " + dTime.toFixed(0) + " secs.";
+				document.getElementById("todaysDate").innerHTML = str;
+				
+			}
+		
+		
+			function createArray(n1,n2){
+				var y = new Array(n1);
+				for (var i1 = 0; i1<n1; i1++) {
+					y[i1] = new Array(n2);
+					for (var i2 = 0; i2<n2; i2++) y[i1][i2] = 0;
+				}
+				return y;
+			}
+			function clearTab(tab){
+				for (var i1 = 0; i1<tab.length; i1++)
+					for (var i2 = 0; i2<tab[i1].length; i2++)
+						tab[i1][i2] = 0;
+			}
+			function createArrayFrom(x){
+				var y = new Array(x.length);
+				for (var i1 = 0; i1 < x.length; i1++) {
+					y[i1] = new Array(x[i1].length);
+					for (var i2 = 0; i2 < x[i1].length; i2++) y[i1][i2] = x[i1][i2];
+				}
+				return y;
+			}
+			
+			// empty Indices
+			function emptyIndices(tab){
+				index = 0;
+				for(var i1=0;i1<tab.length;i1++){
+					for(var i2=0;i2<tab[i1].length;i2++){
+						if(tab[i1][i2] == 0){
+							ix[index] = i1;
+							iy[index++] = i2;
+						}
+					}
+				}
+			}
+			// fill table for Sudoku\
+			function changeElement(i1,i2) {
+//				alert("here: "+i1+","+i2+" " + tab[i1][i2]);
+				var status = document.getElementById("("+i1+","+i2+")");
+				if (isNaN(parseInt(status.innerHTML))){
+					status.innerHTML = "1";
+					tab[i1][i2] = 1;
+				}
+				else{
+					var i = parseInt(status.innerHTML);
+					if(i==9){
+						status.innerHTML = "&nbsp";
+						tab[i1][i2] = 0;
+					}
+					else{
+						status.innerHTML = String(++i);
+						tab[i1][i2] = i;
+					}
+				}
+				// check unique and change color
+				if(unique(tab,i1,i2)){
+					status.style.color = 'black';
+//					status.className = "button";
+				}
+				else{
+					status.style.color = 'red';
+//					status.className = "buttonColorRed";
+				}
+				// check all
+				var isNormal = true;
+				for(var n1=0;n1<9;n1++){
+					for(var n2=0;n2<9;n2++){
+						if(tab[n1][n2]!=0)
+							if(unique(tab,n1,n2)){
+								// change color
+//								alert("("+n1+","+n2+")")
+								document.getElementById("("+n1+","+n2+")").style.color = 'black';
+							} else {
+								isNormal = false;
+							}
+					}
+				}
+				if (!isNormal && isManual){
+					document.getElementById('manualInputButton').disabled = true;
+				} else{
+					document.getElementById('manualInputButton').disabled = false;
+				}
+			}
+		
+			// random Sudoku table\
+			function randomSudoku() {
+				var Nknown = prompt("Enter number of known digits:");
+				tab = createArray(9,9);
+				var i1,i2;
+				if(Nknown<1){
+					alert("Number of known digits is less than 1. Use default [1].")
+					Nknown = 1;
+				}
+				// Generate randoms
+				for(var ind=0;ind<Nknown;ind++){
+					do{
+						i1 = Math.round(Math.random()*8);
+						i2 = Math.round(Math.random()*8);
+					}while(tab[i1][i2]!=0);
+					do{
+						tab[i1][i2] = Math.round(1+Math.random()*8);
+					}while(!unique(tab,i1,i2));
+				}
+				// Fill table
+				emptyIndices(tab);
+				loadTable(tab,"buttonBold");
+			}
+			
+			// reset Sudoku table parameters
+			function reset(){
+				var status;
+				for(var i1=0;i1<tab.length;i1++){
+					for(var i2=0;i2<tab[i1].length;i2++){
+						status = document.getElementById("("+i1+","+i2+")");
+						status.innerHTML = "&nbsp";
+						status.className = "Sbutton";
+						status.disabled  = false;
+					}
+				}
+			}
+			// manual input of Sudoku table
+			function manualInput(){
+				if (isManual){
+					document.getElementById('findSolutionButton').disabled = false;
+					document.getElementById('randomSudokuButton').disabled = false;
+
+					document.getElementById('manualInputButton').style.borderStyle = "";
+					
+//					document.getElementById('tmp1').textContent = tab.toString();
+					loadTable(tab,"buttonBold");
+					emptyIndices(tab);
+					isManual = false;
+					startDate = new Date();
+				} else {
+					document.getElementById('findSolutionButton').disabled = true;
+					document.getElementById('randomSudokuButton').disabled = true;
+					
+					document.getElementById('manualInputButton').style.borderStyle = "inset";
+
+					//manualInputButton
+					clearTab(tab);
+					reset();
+					isManual = true;
+				}
+			}
+			
+			// clear Solution for Sudoku
+			function clearSolution() {
+				for(var ind=0;ind<index;ind++)
+					tab[ix[ind]][iy[ind]] = 0;
+				// Fill table
+				loadTableXY(tab,"buttonTextColorGreen",ix,iy,index);
+			}
+			
+			
+			// find Solution for Sudoku\
+			function findSolution() {
+//				var tab_tmp = createArrayFrom(tab);
+				clearSolution();
+				var t0 = performance.now();
+				for(var ind=0;ind<index;){
+					tab[ix[ind]][iy[ind]]++;
+					if (tab[ix[ind]][iy[ind]]>9){
+						tab[ix[ind]][iy[ind]] = 0;
+						if((--ind)<0){
+							alert("No solution!");
+							return;
+						}
+						else continue;
+					}
+					if(unique(tab,ix[ind],iy[ind])) ind++;
+				}
+				// Fill table
+				loadTableXY(tab,"buttonTextColorGreen",ix,iy,index);
+				var dt = performance.now()-t0;
+				alert("Solution found! Simulation time is " + dt.toFixed(2) + " milliseconds.")
+			}
+			function loadTable(tab,type) {
+				var status;
+				for(var i1=0;i1<tab.length;i1++){
+					for(var i2=0;i2<tab[i1].length;i2++){
+						status = document.getElementById("("+i1+","+i2+")");
+						if(tab[i1][i2]==0){
+							status.innerHTML = "&nbsp";
+							status.className = "Sbutton";
+							status.disabled  = false;
+						}
+						else{
+							status.innerHTML = String(tab[i1][i2]);
+							status.className = type;
+							status.disabled  = true;
+						}
+					}
+				}
+			}
+			function loadTableXY(tab,type,ix,iy,index) {
+				var status;
+				for(var ind=0;ind<index;ind++){
+					status = document.getElementById("("+ix[ind]+","+iy[ind]+")");
+					if(tab[ix[ind]][iy[ind]]==0){
+						status.innerHTML = "&nbsp";
+					} else{
+						status.innerHTML = String(tab[ix[ind]][iy[ind]]);
+						status.className = type;
+					}
+				}
+			}
+
+			function unique(tab,i1,i2) {
+				// along vertical line
+				for(var n1=0;n1<8;n1++){
+					if(tab[n1][i2]==0) continue;
+					for(var n2=n1+1;n2<9;n2++){
+						if (tab[n1][i2]==tab[n2][i2]) return false;
+					}
+				}
+				// along horizontal line
+				for(var n1=0;n1<8;n1++){
+					if(tab[i1][n1]==0) continue;
+					for(var n2=n1+1;n2<9;n2++){
+						if (tab[i1][n1]==tab[i1][n2]) return false;
+					}
+				}
+				// inside region 3x3
+				var i10 = i1-(i1%3), i20 = i2-(i2%3);
+				for(var n1=0;n1<8;n1++){
+					if(tab[i10+n1%3][i20+((n1-n1%3)/3)]==0) continue;
+					for(var n2=n1+1;n2<9;n2++){
+						if (tab[i10+n1%3][i20+((n1-n1%3)/3)]==tab[i10+n2%3][i20+((n2-n2%3)/3)]) return false;
+					}
+				}
+				return true;
+			}
+
+			// Load Sudoku
+			function readSingleFile(evt) {
+				var file = evt.target.files[0];
+				//alert(file.toString())
+				if (!file) {
+				alert("return!")
+					return;
+				}
+				var reader = new FileReader();
+				reader.onload = function(e) {
+					var array_tmp = e.target.result.split(",").map(Number);
+					for(var n1=0;n1<9;n1++)
+						for(var n2=0;n2<9;n2++)
+							tab[n1][n2] = array_tmp[9*n1+n2];
+					// Fill table
+					reset();
+					loadTable(tab,"buttonBold");
+					emptyIndices(tab);
+					startDate = new Date();
+				};
+				reader.readAsText(file);
+			}
+			function loadSudoku() {
+				if (isManual)
+					document.getElementById('manualInputButton').click();
+					
+				// openfile dialog
+				document.getElementById('file-input').click();
+			}
+			// Save Sudoku
+			function saveSudoku() {
+				if (isManual)
+					document.getElementById('manualInputButton').click();
+
+				// saveas file dialog
+				var text = tab.toString();
+//				var filename = document.getElementById('get-fileName').value;
+  var blob = new Blob([text], {type:  "text/plain;charset=utf-8;"});
+//  var element = angular.element('<a/>');
+
+			if (window.navigator.msSaveBlob) { // IE
+				window.navigator.msSaveOrOpenBlob(blob, filename)
+			} else if (navigator.userAgent.search("Firefox") !== -1) { // Firefox
+				var element = document.createElement('a');
+				element.style.display = 'none';
+				document.body.appendChild(element);
+				element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+				element.setAttribute('download', filename);
+				document.body.appendChild(element);
+				element.click();
+				document.body.removeChild(element);
+
+	//element.css({display: 'none'});
+    //element.element(document.body).append(element);
+//    element.attr({
+//      href: 'data:attachment/csv;charset=utf-8,' + encodeURIComponent(text),
+//      target: '_blank',
+//      download: filename
+//    })[0].click();
+//    anchor.remove();
+			} else { // Chrome
+				var element = document.createElement('a');
+				element.style.display = 'none';
+    element.attr({
+      href: URL.createObjectURL(blob),
+      target: '_blank',
+      download: filename
+    })[0].click();
+			}		
+				// create (or find hidden object "a tmp") hidden element 'download'
+//				var element = document.createElement('a');
+//				element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+//				element.setAttribute('download', filename);
+
+				//element.style.display = 'none';
+//				document.body.appendChild(element);
+
+//				element.click();
+
+//				document.body.removeChild(element);
+			}
+
+			
+			var filename = "SaveSudoku";
+			var startDate = new Date();
+			var isManual = false;
+//			var tab = createArray(9,9);
+///*
+			var tab = [[9,0,2, 0,0,0, 0,0,8],
+			           [0,0,0, 0,8,5, 0,0,9],
+					   [4,0,0, 2,0,0, 0,0,0],
+					   
+					   [0,5,0, 0,0,6, 3,0,0],
+					   [0,1,0, 0,3,0, 0,2,0],
+					   [0,0,6, 4,0,0, 0,9,0],
+					   
+					   [0,0,0, 0,0,2, 0,0,3],
+					   [5,0,0, 8,1,0, 0,0,0],
+					   [6,0,0, 0,0,0, 7,0,2]];
+//*/
+//
+/*
+			var tab = [[0,0,0,2,0,3,9,0,1],
+			           [1,0,0,0,0,0,0,0,0],
+					   [0,0,0,4,0,0,5,0,0],
+					   [0,0,0,0,0,0,0,0,0],
+					   [0,0,5,0,0,0,0,0,0],
+					   [0,0,0,0,0,0,0,0,0],
+					   [0,7,0,0,0,0,0,0,0],
+					   [0,0,0,0,0,0,0,0,7],
+					   [0,0,1,0,0,4,0,0,8]];
+//
+*/
+
+			var ix = Array(9*9);
+			var iy = Array(9*9);
+			var index = 0;
+
+			// Check for the various File API support.
+			if (window.File && window.FileReader && window.FileList && window.Blob) {
+			  // Great success! All the File APIs are supported.
+//				alert('The File APIs is supported in this browser.');
+			} else {
+			  alert('The File APIs are not fully supported in this browser.');
+			}
+			
+			
+			// create empty template of Sudoku table
+			var str = '<table border="1" align="center" frame="box" width="20\%">';
+			for(var i1=0;i1<9;i1++){
+				if(i1==2||i1==5)
+					str = str + '<tr style="border-bottom: double;">';
+				else
+					str = str + '<tr>';
+				for(var i2=0;i2<9;i2++){
+					str = str + '<td';
+					if(i2==3||i2==6)
+						str = str + ' style="border-left: double;"';
+					str = str + '> <button class="Sbutton" id="('+i1+','+i2+')" onclick="changeElement('+i1+','+i2+')"> &nbsp </button> </td>';
+				}
+				str = str + '</tr>';
+			}
+			str = str + '</table>';
+
+			// body generation
+			document.write('<h1> Sudoku </h1>');
+			document.writeln('<p align="left" id="tmp1"> v.1.0 [15.07.2016] Author: A.V. Korovin <p>');
+			document.write('<pre>');
+			document.writeln('<div class="All">');
+			document.writeln('<div>');
+			document.writeln('<button class="Abutton" onclick="clearSolution()" id="clearSolutionButton"> Clear Solution </button>');
+			document.writeln('<button class="Abutton" onclick="findSolution()" id="findSolutionButton"> Find Solution </button>');
+			document.writeln('<button class="Abutton" onclick="randomSudoku()" id="randomSudokuButton"> Random Sudoku </button>');
+			document.writeln('<button class="Abutton" onclick="manualInput()" id="manualInputButton"> Manual input </button>');
+
+			// Load Sudoku
+			document.writeln('<button class="Abutton" onclick="loadSudoku()"> Load sudoku </button>');
+			// Save Sudoku
+			document.writeln('<button class="Abutton" onclick="saveSudoku()"> Save sudoku </button>');
+
+ 			document.writeln('</div>');
+			document.writeln('<div>');
+			document.write(str);
+			document.writeln('<p align="center" id="todaysDate">  <p>');
+
+
+			document.writeln('</div>');
+			document.writeln('</div>');
+ 
+			emptyIndices(tab);
+			loadTable(tab,"buttonBold");
+			
+			// Set inerval to show time
+			setInterval(doDate, 1000);
+			// add listener for open file dialog
+			document.getElementById('file-input').addEventListener('change', readSingleFile, false);			
+
+		</script>
+
+
+		<style>
+			h1 {
+				font-family: "Times New Roman";
+				text-align: center;
+				text-shadow: 2px 5px 3px blue;
+			}
+			
+			/* button text properties */
+			.Sbutton,.button,.buttonColorRed,.buttonBold,.buttonTextColorGreen {
+				height: 30px;
+				width: 30px;
+			}
+			.button{
+				color: black;
+			}
+			.buttonColorRed{
+//				background-color: red;
+				color: red;
+			}
+			.buttonTextColorGreen{
+				color: green;
+			}
+			.buttonBold{
+				color: black;
+				font-weight: bold;
+			}
+			.Abutton {
+				height: 25px;
+				width: 125px;
+			}
+			
+			/* div properties */
+			.All {
+				height: 380px;
+				width:  600px;
+				display: inline-table;
+				text-align: center;
+				vertical-align: middle;
+				background-color: LightSkyBlue;
+			}
+			div {
+				display: table-cell;
+				vertical-align: middle;
+			}
+			
+			/* table properties */
+			td {
+				display: table-cell;
+				text-align: center;
+			}
+			table { 
+				border-top: double;
+				border-bottom: double;
+				border-left: double;
+				border-right: double;
+				border-collapse: collapse; 
+			}
+		</style>
+
+	</head>
+
+	<body>
+	</body>
+
+</html>

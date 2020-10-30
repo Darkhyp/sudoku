@@ -1,0 +1,48 @@
+<html>
+	<head>
+		<title>Sudoku</title>
+
+		<input type="file" id="file-input"  style="display: none;"/>
+		<h3>Contents of the file:</h3>
+		<button onclick="changeColor('blue');">blue</button>
+		<button onclick="changeColor('red');">red</button>
+		<pre id="file-content"> </pre>
+
+
+		<script>
+			function readSingleFile(evt) {
+				var file = evt.target.files[0];
+				if (!file) {
+					return;
+				}
+				var reader = new FileReader();
+				reader.onload = function(e) {
+					var contents = e.target.result;
+					displayContents(contents);
+				};
+				reader.readAsText(file);
+			}
+			function displayContents(contents) {
+				var element = document.getElementById('file-content');
+				element.textContent = contents;
+			}
+			function changeColor(newColor) {
+				var input = document.getElementById('file-input');
+				input.click();
+				var elem = document.getElementById('file-content');
+				elem.style.color = newColor;
+			}
+
+			document.getElementById('file-input').addEventListener('change', readSingleFile, false);
+		</script>
+
+		<style>
+		</style>
+
+	</head>
+
+	<body>
+
+	</body>
+
+</html>
